@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="公众号排版助手：粘贴 Markdown，选择配色与章节样式，实时预览，一键复制成微信兼容的图文排版。纯前端离线工具，内容不上传服务器。">
+<title>公众号排版助手 · Markdown 一键转微信图文</title>
+<style>
+  :root{
+    --ui-bg:#f4f6f9; --ui-card:#ffffff; --ui-line:#e4e8ee; --ui-ink:#1c2430;
+    --ui-sub:#6b7686; --ui-accent:#2563eb; --ui-accent-soft:#eaf1ff;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ui-bg);color:var(--ui-ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:14px;line-height:1.6;}
+  .page{max-width:1280px;margin:0 auto;padding:22px 20px 50px;}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
+  header h1{font-size:22px;margin:0 0 5px;font-weight:800;letter-spacing:-.3px;}
+  header p{margin:0;color:var(--ui-sub);font-size:13px;}
+  .badges{display:flex;gap:7px;flex-wrap:wrap;}
+  .badge{background:var(--ui-accent-soft);color:var(--ui-accent);font-size:12px;font-weight:700;
+    padding:5px 12px;border-radius:999px;white-space:nowrap;}
+  .badge.safe{background:#e9f7ef;color:#0f7a48;}
+
+  .steps{background:#eef3fc;border:1px solid #dbe6fb;border-radius:12px;padding:12px 16px;margin-bottom:14px;
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px;color:#2b436e;}
+  .steps b{font-weight:800;white-space:nowrap;}
+  .steps .arrow{color:#a9bcdb;}
+  details.guide{margin-bottom:14px;background:var(--ui-card);border:1px solid var(--ui-line);border-radius:12px;padding:12px 16px;}
+  details.guide summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ui-ink);}
+  details.guide ul{margin:10px 0 2px;padding-left:20px;color:var(--ui-sub);font-size:13px;line-height:1.9;}
+
+  .panel{background:var(--ui-card);border:1px solid var(--ui-line);border-radius:14px;padding:16px 18px;margin-bottom:14px;}
+  .panel h3{margin:0 0 12px;font-size:13px;font-weight:800;color:var(--ui-sub);letter-spacing:.5px;}
+
+  .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:9px;}
+  .theme{border:1.5px solid var(--ui-line);border-radius:11px;padding:9px 10px;cursor:pointer;background:#fff;
+    display:flex;align-items:center;gap:9px;transition:.15s;user-select:none;}
+  .theme:hover{border-color:#b9c6d8;}
+  .theme.on{border-color:var(--ui-accent);box-shadow:0 0 0 2px var(--ui-accent-soft);}
+  .dots{display:flex;flex:0 0 auto;}
+  .dots i{width:13px;height:13px;border-radius:50%;display:block;border:1.5px solid #fff;}
+  .dots i+i{margin-left:-5px;}
+  .theme span{font-size:12.5px;font-weight:700;white-space:nowrap;}
+
+  .opts{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .opt{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ui-ink);}
+  .opt label{font-weight:600;white-space:nowrap;}
+  select,input[type=color]{border:1px solid var(--ui-line);border-radius:8px;background:#fff;height:30px;font-size:13px;}
+  select{padding:0 8px;}
+  input[type=color]{width:36px;padding:2px;cursor:pointer;}
+  .switch{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;}
+  .switch input{accent-color:var(--ui-accent);width:15px;height:15px;cursor:pointer;}
+  .btn{border:1px solid var(--ui-line);background:#fff;color:var(--ui-ink);border-radius:8px;
+    padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:.15s;}
+  .btn:hover{border-color:var(--ui-accent);color:var(--ui-accent);}
+  .btn.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#fff;}
+  .btn.primary:hover{background:#1d4ed8;color:#fff;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+
+  .work{display:grid;grid-template-columns:1fr 420px;gap:14px;align-items:start;}
+  @media(max-width:960px){.work{grid-template-columns:1fr;}}
+  .editor{width:100%;min-height:520px;resize:vertical;border:1px solid var(--ui-line);border-radius:11px;
+    padding:14px 15px;font-family:ui-monospace,SFMonoRegular,Consolas,"Microsoft YaHei",monospace;
+    font-size:13px;line-height:1.75;color:#2b3542;background:#fcfdff;outline:none;}
+  .editor:focus{border-color:var(--ui-accent);box-shadow:0 0 0 2px var(--ui-accent-soft);}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center;}
+
+  .preview-wrap{background:var(--ui-card);border:1px solid var(--ui-line);border-radius:14px;padding:14px;}
+  .pv-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .pv-head strong{font-size:13px;}
+  .pv-head span{font-size:12px;color:var(--ui-sub);}
+  .phone{border:1px solid #d9dfe7;border-radius:22px;background:#fff;padding:9px;
+    box-shadow:0 8px 24px rgba(28,36,48,.08);}
+  .phone-bar{height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#aab2bf;
+    border-bottom:1px solid #f0f2f5;margin-bottom:6px;}
+  iframe{width:100%;height:640px;border:0;display:block;border-radius:12px;background:#fff;}
+
+  .foot{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:14px;}
+  .hint{font-size:12px;color:var(--ui-sub);}
+  footer{margin-top:22px;padding-top:14px;border-top:1px solid var(--ui-line);
+    font-size:12px;color:var(--ui-sub);line-height:1.9;}
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:#1c2430;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;
+    opacity:0;pointer-events:none;transition:.25s;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.2);}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  textarea.code{width:100%;height:170px;margin-top:8px;border:1px solid var(--ui-line);border-radius:9px;
+    padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:#475569;background:#fbfcfe;}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div>
+      <h1 id="siteName">公众号排版助手</h1>
+      <p id="siteTagline">粘贴 Markdown，选好配色，一键复制成微信兼容的图文排版。</p>
+    </div>
+    <div class="badges">
+      <span class="badge safe">纯前端 · 内容不上传</span>
+      <span class="badge">单文件 · 可离线</span>
+    </div>
+  </header>
+
+  <div class="steps">
+    <b>① 粘贴 Markdown</b><span class="arrow">→</span>
+    <b>② 选配色与章节样式</b><span class="arrow">→</span>
+    <b>③ 复制，粘进公众号编辑器</b>
+    <span class="hint">（默认开启「公众号强兼容模式」，也可点「载入语法演示」先看效果）</span>
+  </div>
+
+  <details class="guide">
+    <summary>怎么用 / 支持哪些 Markdown 写法（点击展开）</summary>
+    <ul>
+      <li><b># 标题</b> → 顶部主色大标题；紧随的 <b>&gt; 引用行</b> 变成副信息（栏目 / 作者 / 日期）。</li>
+      <li><b>## 章节标题</b> → 一个圆角卡片；写「## 1. 标题」或自动编号，序号支持 5 种样式。</li>
+      <li><b>- **标签**：内容</b> → 自动变成彩色标签 chip，适合「核心亮点 / 适用对象 / 落地价值」这类四要素。</li>
+      <li>支持 <b>**加粗**</b>、<b>*强调*</b>、<b>&gt; 引用</b>、<b>---</b> 分隔线、有序/无序列表。</li>
+      <li>结尾含「共同点 / 结语 / 写在最后 / 总结」的章节会变成 CTA 块；整行斜体 <b>*文字*</b> 自动变小字脚注。</li>
+      <li><b>公众号强兼容模式（默认开）</b>：只用「浅底 + 深字」，配色靠字色、左边框和标签表达。微信编辑器即使把背景色清掉，文字依然清晰，不会出现白字白底。</li>
+      <li>关闭强兼容模式（标准模式）会恢复深色 Hero 与深色 CTA，视觉更强，适合「下载 HTML → 打开后全选复制」或编辑器保留样式较完整的情况。</li>
+      <li>复制后到公众号编辑器按 <b>Ctrl/⌘ + V</b>，样式会一起带过去；如编辑器仍清空样式，改用「下载 HTML」打开后全选复制，或直接复制 Markdown 纯文本。</li>
+    </ul>
+  </details>
+
+  <div class="panel">
+    <h3>① 配色模板（点选即时生效）</h3>
+    <div class="themes" id="themes"></div>
+    <div class="opts" style="margin-top:13px;">
+      <div class="opt"><label>自定义主色</label><input type="color" id="customColor" value="#4f46e5"></div>
+      <button class="btn" id="applyColor">应用为主色</button>
+      <span class="hint">任选颜色，自动派生配套的浅底、标签色与强调色。</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>② 排版参数</h3>
+    <div class="opts">
+      <div class="opt"><label>正文字号</label>
+        <select id="fontSize"><option value="15">15px 紧凑</option><option value="16" selected>16px 标准</option><option value="17">17px 舒适</option></select>
+      </div>
+      <div class="opt"><label>行距</label>
+        <select id="lineHeight"><option value="1.7">1.7</option><option value="1.85" selected>1.85</option><option value="2">2.0</option></select>
+      </div>
+      <div class="opt"><label>章节标题</label>
+        <select id="headStyle">
+          <option value="eyebrow" selected>序号眉标 · 推荐</option>
+          <option value="round">小圆徽标</option>
+          <option value="square">经典方块</option>
+          <option value="bar">竖线标题</option>
+          <option value="plain">纯文字序号</option>
+        </select>
+      </div>
+      <label class="switch" style="color:var(--ui-accent);" title="浅底深字，背景被微信清掉也不影响阅读"><input type="checkbox" id="strongOn" checked>公众号强兼容模式</label>
+      <label class="switch"><input type="checkbox" id="heroOn" checked>顶部主色 Hero</label>
+      <label class="switch"><input type="checkbox" id="numOn" checked>显示章节序号</label>
+      <label class="switch"><input type="checkbox" id="chipOn" checked>列表标签彩色 chip</label>
+      <label class="switch"><input type="checkbox" id="ctaOn" checked>结尾段做 CTA 块</label>
+    </div>
+    <div class="opts" style="margin-top:12px;">
+      <button class="btn" id="resetBtn">恢复默认设置</button>
+      <span class="hint">强兼容模式下所有文字都是深色、底色都是浅色；即使公众号编辑器清洗了背景色，正文也不会「消失」。设置会记在本机浏览器。</span>
+    </div>
+  </div>
+
+  <div class="work">
+    <div>
+      <div class="panel" style="margin-bottom:0;">
+        <h3>③ 粘贴 / 编辑 Markdown</h3>
+        <textarea class="editor" id="md" spellcheck="false" placeholder="在这里粘贴你的 Markdown 正文…&#10;&#10;# 文章标题&#10;&gt; 栏目 ｜ 作者 ｜ 日期&#10;&#10;## 1. 第一个章节&#10;- **核心亮点**：……&#10;&#10;## 2. 第二个章节&#10;正文段落……"></textarea>
+        <div class="tools">
+          <button class="btn" id="loadDemo">载入语法演示</button>
+          <button class="btn" id="loadFile">导入 .md 文件</button>
+          <input type="file" id="fileInput" accept=".md,.markdown,.txt" style="display:none;">
+          <button class="btn" id="clear">清空</button>
+          <span class="hint">支持拖放 .md 文件到输入框</span>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:14px;">
+        <h3>④ 输出</h3>
+        <div class="foot">
+          <button class="btn primary" id="copyRich">复制到公众号（含样式）</button>
+          <button class="btn" id="copyMd">复制 Markdown</button>
+          <button class="btn" id="download">下载 HTML</button>
+          <span class="hint">复制后到公众号编辑器直接粘贴；强兼容模式下背景被清掉也不会白字白底。</span>
+        </div>
+        <details style="margin-top:12px;">
+          <summary style="cursor:pointer;font-size:12.5px;color:var(--ui-sub);font-weight:600;">查看生成的 HTML 源码（仅内联样式）</summary>
+          <textarea class="code" id="code" readonly></textarea>
+        </details>
+      </div>
+    </div>
+
+    <div class="preview-wrap">
+      <div class="pv-head"><strong>手机端实时预览</strong><span>375px · 所见即所得</span></div>
+      <div class="phone">
+        <div class="phone-bar">微信公众号 · 图文正文</div>
+        <iframe id="preview"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div>所有转换都在你的浏览器本地完成，文章内容不会上传到任何服务器；本页无外部依赖，可离线保存使用。</div>
+    <div>输出为微信兼容的纯内联样式：只用 &lt;section&gt;/&lt;p&gt;，每个元素显式写死背景色、字色、字号、行高，间距用 padding；不含渐变、阴影、flex/grid、固定宽高徽标等会被微信过滤的写法。发布前请在公众号草稿箱预览确认。</div>
+  </footer>
+</div>
+<div id="toast"></div>
+
+<script>
+// ==== CORE START ====
+// 站点配置：部署者可在此修改站点名称、说明、默认配色与默认章节样式。
+const SITE_CONFIG = {
+  name:'公众号排版助手',
+  tagline:'粘贴 Markdown，选好配色，一键复制成微信兼容的图文排版。',
+  defaultTheme:'indigo',
+  defaultHead:'eyebrow',
+  strongCompat:true   // 默认开启公众号强兼容模式（浅底深字，防微信清洗背景色）
+};
+
+const THEMES = {
+  indigo:{name:'靛蓝紫',hero:'#4f46e5',accent:'#6d28d9',chipBg:'#ede9fe',chipInk:'#6d28d9',soft:'#f5f3ff'},
+  wechat:{name:'微信绿',hero:'#07a35a',accent:'#047857',chipBg:'#e3f6ec',chipInk:'#047857',soft:'#f0fbf5'},
+  blue:{name:'商务蓝',hero:'#1d4ed8',accent:'#1e40af',chipBg:'#e5efff',chipInk:'#1e40af',soft:'#f2f7ff'},
+  coral:{name:'暖橙',hero:'#ea580c',accent:'#c2410c',chipBg:'#ffeadf',chipInk:'#c2410c',soft:'#fff5ee'},
+  mono:{name:'高级灰黑',hero:'#111827',accent:'#374151',chipBg:'#eef0f3',chipInk:'#374151',soft:'#f6f7f9'},
+  red:{name:'中国红',hero:'#c62828',accent:'#991b1b',chipBg:'#fdeaea',chipInk:'#991b1b',soft:'#fff5f5'},
+  forest:{name:'墨绿',hero:'#0f766e',accent:'#115e59',chipBg:'#e0f2f1',chipInk:'#115e59',soft:'#f0faf8'},
+  sakura:{name:'樱花粉',hero:'#db2777',accent:'#9d174d',chipBg:'#fce7f0',chipInk:'#9d174d',soft:'#fff2f8'}
+};
+const FIXED = {border:'#eef2f7',ink:'#0f172a',body:'#475569',muted:'#94a3b8',lead:'#f8fafc',white:'#ffffff'};
+
+function hex2rgb(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+function rgb2hex(a){return '#'+a.map(v=>Math.max(0,Math.min(255,v)).toString(16).padStart(2,'0')).join('');}
+function mix(a,b,r){const x=hex2rgb(a),y=hex2rgb(b);return rgb2hex(x.map((v,i)=>Math.round(v*r+y[i]*(1-r))));}
+function fromPrimary(hex){
+  return {name:'自定义',hero:hex,accent:mix(hex,'#000000',.82),chipBg:mix(hex,'#ffffff',.12),
+    chipInk:mix(hex,'#000000',.72),soft:mix(hex,'#ffffff',.06)};
+}
+function theme(name){return Object.assign({},FIXED,THEMES[name]||fromPrimary(name));}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ---------- 微信公众号编辑器兼容基线 ----------
+// 微信编辑器粘贴富文本时会重写容器标签、丢掉继承样式、甚至清掉 background-color。
+// 所以输出层遵守四条硬规则：
+//   ① 容器一律用 <section>/<p>，不用 <div>；
+//   ② 每个元素显式写死 background-color / color / font-size / line-height，零继承；
+//   ③ 间距只用 padding，不用 margin（微信会折叠 margin）；
+//   ④ 强兼容模式永远「浅底 + 深字」，背景被清掉也不会出现白字白底。
+// 绝不再用 .replace(/color:[^;]+;/g,...)：它会把 background-color 里的 color: 一起改坏，
+// 这正是「复制到公众号后背景变了」的直接元凶。
+function S(bg,color,fs,lh,extra){
+  return 'margin:0;padding:0;background-color:'+bg+';color:'+color+';font-size:'+fs+'px;line-height:'+lh+';'+(extra||'');
+}
+function sec(style,inner){return '<section style="'+style+'">'+inner+'</section>';}
+function para(style,inner){return '<p style="'+style+'">'+inner+'</p>';}
+function isFootNote(text){return /^\*[^*]+\*$/.test(String(text).trim());}
+
+// 两套配色语义：强兼容（浅底深字，推荐）/ 标准（保留深色 Hero 与深色 CTA）
+function paint(T,strong){
+  const base={page:T.white,cardBg:T.white,cardBorder:T.border,
+    ink:T.ink,body:T.body,muted:T.muted,accent:T.accent,
+    chipBg:T.chipBg,chipInk:T.chipInk,quoteBg:T.soft,hr:T.border};
+  if(strong){
+    return Object.assign({},base,{strong:true,
+      heroBg:T.soft,heroInk:T.ink,heroSub:T.body,
+      ctaBg:T.soft,ctaInk:T.ink,ctaBody:T.body,ctaAccent:T.accent});
+  }
+  return Object.assign({},base,{strong:false,
+    heroBg:T.hero,heroInk:T.white,heroSub:mix(T.hero,'#ffffff',.22),
+    ctaBg:T.accent,ctaInk:T.white,ctaBody:T.white,ctaAccent:T.white});
+}
+
+// 行内样式：强调色由调用方显式传入，不再事后用正则改字符串
+function inlineMd(s,T,fs,A,codeBg,codeInk){
+  let t=esc(s);
+  const a=A||T.accent, cb=codeBg||T.lead, ci=codeInk||a;
+  t=t.replace(/`([^`]+)`/g,(m,c)=>'<span style="background-color:'+cb+';color:'+ci+';padding:1px 5px;border-radius:4px;font-size:'+(fs-1)+'px;">'+c+'</span>');
+  t=t.replace(/\[([^\]]+)\]\(([^)]+)\)/g,(m,label)=>'<span style="color:'+a+';font-weight:700;">'+label+'</span>');
+  t=t.replace(/\*\*([^*]+)\*\*/g,(m,c)=>'<strong style="color:'+a+';font-weight:700;">'+c+'</strong>');
+  t=t.replace(/\*([^*]+)\*/g,(m,c)=>'<em style="color:'+a+';font-style:normal;">'+c+'</em>');
+  return t;
+}
+
+function parseBlocks(md){
+  const lines=md.replace(/\r/g,'').split('\n');
+  const out=[];let i=0;
+  const SPE=/^(#{1,4})\s|^>\s?|^[-*]\s+|^\d+\.\s+|^---+\s*$|^:::/;
+  while(i<lines.length){
+    const L=lines[i];
+    if(L.trim()===''){i++;continue;}
+    if(/^---+\s*$/.test(L.trim())){out.push({t:'hr'});i++;continue;}
+    const h=L.match(/^(#{1,4})\s+(.*)$/);
+    if(h){out.push({t:'h'+h[1].length,text:h[2]});i++;continue;}
+    if(/^>\s?/.test(L)){const b=[];while(i<lines.length&&/^>\s?/.test(lines[i])){b.push(lines[i].replace(/^>\s?/,''));i++;}out.push({t:'quote',text:b.join('<br>')});continue;}
+    const ordered=/^\d+\.\s+/.test(L);
+    if(/^[-*]\s+/.test(L)||ordered){
+      const items=[];
+      while(i<lines.length&&(ordered?/^\d+\.\s+/.test(lines[i]):/^[-*]\s+/.test(lines[i]))){
+        items.push(lines[i].replace(ordered?/^\d+\.\s+/: /^[-*]\s+/,''));i++;
+      }
+      out.push({t:'list',ordered,items});continue;
+    }
+    const b=[];
+    while(i<lines.length&&lines[i].trim()!==''&&!SPE.test(lines[i])){b.push(lines[i]);i++;}
+    if(b.length)out.push({t:'p',text:b.join(' ')});else i++;
+  }
+  return out;
+}
+
+// 章节标题：5 种样式全部退化为「浅底深字 + padding + 左边框」，不依赖固定宽高、inline-block、vertical-align
+function sectionHead(num,title,total,T,fs,C){
+  const P=C.P,A=C.accent,INK=C.ink,BG=C.bg,F=C.F;
+  const label=num?(num.length<2?'0'+num:num):'';
+  const counter=label&&total?label+' / '+(total<10?'0'+total:total):label;
+  const tfs=fs+2;
+  const body=inlineMd(title,T,tfs,INK,P.chipBg,INK);
+  const st=C.head||'eyebrow';
+  const tail='padding:0 0 '+C.gap+'px;';
+  if(st==='round'||st==='square'){
+    const r=st==='round'?'999px':'7px';
+    const badge=label?'<span style="background-color:'+C.badgeBg+';color:'+C.badgeInk+';padding:3px 9px;border-radius:'+r+';font-size:'+(fs-3)+'px;font-weight:800;">'+label+'</span>&nbsp;&nbsp;':'';
+    return para(S(BG,INK,tfs,1.45,F+tail+'font-weight:800;'),badge+body);
+  }
+  if(st==='plain'||st==='bar'){
+    const pre=label?'<span style="color:'+A+';font-size:'+(fs-2)+'px;font-weight:800;">'+label+'</span>&nbsp;&nbsp;':'';
+    const extra=st==='bar'?('border-left:4px solid '+A+';padding:0 0 '+C.gap+'px 12px;'):tail;
+    return sec(S(BG,INK,tfs,1.45,F+extra+'font-weight:800;'),pre+body);
+  }
+  // eyebrow：序号眉标（默认），微信里最稳，中文基线不会错位
+  let s='';
+  if(label)s+=para(S(BG,A,fs-4,1.3,F+'padding:0 0 6px;font-weight:800;letter-spacing:2px;'),counter);
+  s+=para(S(BG,INK,tfs,1.4,F+'font-weight:800;'),body);
+  return sec(S(BG,INK,fs,1.5,F+'border-left:4px solid '+A+';padding:0 0 '+C.gap+'px 12px;'),s);
+}
+
+function buildHtml(md,themeName,opt){
+  const T=theme(themeName);
+  const fs=+opt.fs||16, lh=+opt.lh||1.85;
+  const strong=opt.strong!==false;              // 强兼容模式：默认开启
+  const P=paint(T,strong);
+  const F='font-family:-apple-system,BlinkMacSystemFont,\'PingFang SC\',\'Microsoft YaHei\',sans-serif;';
+  const ROOT=S(P.page,P.body,fs,lh,F+'padding:0;');
+  const html=[];
+  const blocks=parseBlocks(md);
+
+  let heroIdx=-1,heroQuote=null;
+  for(let k=0;k<blocks.length;k++){if(blocks[k].t==='h1'){heroIdx=k;if(blocks[k+1]&&blocks[k+1].t==='quote')heroQuote=blocks[k+1].text;break;}}
+  const start=heroIdx>=0?heroIdx+1+(heroQuote?1:0):0;
+  const rest=blocks.slice(start);
+
+  // Hero：强兼容下是浅底深字，背景被微信清掉也照样可读
+  if(opt.hero&&heroIdx>=0){
+    const bg=P.heroBg, ink=P.heroInk, sub=P.heroSub;
+    const cb=strong?T.lead:mix(T.hero,'#ffffff',.84), ci=strong?T.accent:ink;
+    let s=para(S(bg,ink,fs+7,1.4,F+'padding:0 0 10px;font-weight:800;'),
+      inlineMd(blocks[heroIdx].text,T,fs+7,ink,cb,ci));
+    if(heroQuote)s+=para(S(bg,sub,fs-3,1.6,F),inlineMd(heroQuote,T,fs-3,sub,cb,sub));
+    html.push(sec(S(bg,ink,fs,lh,F+'padding:28px 18px 24px;border-bottom:3px solid '+T.accent+';'),s));
+  }else if(heroIdx>=0){
+    let s=para(S(P.page,P.ink,fs+7,1.4,F+'padding:0 0 10px 12px;border-left:4px solid '+T.accent+';font-weight:800;'),
+      inlineMd(blocks[heroIdx].text,T,fs+7,P.ink,T.lead,P.ink));
+    if(heroQuote)s+=para(S(P.page,P.muted,fs-3,1.6,F+'padding:0 0 0 12px;'),
+      inlineMd(heroQuote,T,fs-3,P.muted,T.lead,P.muted));
+    html.push(sec(S(P.page,P.body,fs,lh,F+'padding:8px 16px 16px;'),s));
+  }
+
+  const groups=[];let cur=null;
+  rest.forEach(b=>{
+    if(b.t==='h2'){cur={title:b.text,blocks:[]};groups.push(cur);}
+    else if(cur){cur.blocks.push(b);}
+    else{groups.push({title:null,blocks:[b]});}
+  });
+
+  const CTA_RE=/(共同点|结语|写在最后|总结|小结|最后说|说两句|互动|一起聊|下期|尾声|后记)/;
+  const ctaGroupIdx=(opt.cta&&groups.length>=2&&groups[groups.length-1].title&&CTA_RE.test(groups[groups.length-1].title))?groups.length-1:-1;
+  const sectionCount=groups.filter((g,i)=>g.title&&i!==ctaGroupIdx).length;
+  let seq=0;
+
+  groups.forEach((g,gi)=>{
+    const isCta=(gi===ctaGroupIdx);
+    const bg=isCta?P.ctaBg:P.cardBg;
+    const ink=isCta?P.ctaInk:P.ink;
+    const bodyColor=isCta?P.ctaBody:P.body;
+    const acc=isCta?P.ctaAccent:P.accent;
+    const chipBg=isCta?(strong?T.white:T.white):P.chipBg;
+    const chipInk=isCta?(strong?P.chipInk:T.accent):P.chipInk;
+    const cb=isCta?(strong?T.lead:mix(T.accent,'#ffffff',.86)):T.lead;
+    const ci=isCta?(strong?T.accent:T.white):T.accent;
+    const qbg=isCta?(strong?T.white:mix(T.accent,'#ffffff',.88)):P.quoteBg;
+    const pieces=[];
+
+    if(g.title){
+      let title=g.title,num=null;
+      if(opt.num){
+        const m=title.match(/^(\d+)[.、．]\s*(.*)$/);
+        if(m){num=m[1];title=m[2];}else{seq++;num=String(seq);}
+      }
+      pieces.push(sectionHead(isCta?null:num,title,sectionCount,T,fs,{
+        P:P,F:F,head:opt.head||'eyebrow',gap:14,
+        ink:ink,bg:bg,accent:acc,
+        badgeBg:chipBg,badgeInk:chipInk
+      }));
+    }
+
+    g.blocks.forEach(b=>{
+      if(b.t==='h3'){
+        pieces.push(para(S(bg,ink,fs+1,1.5,F+'padding:14px 0 8px;font-weight:800;'),
+          inlineMd(b.text,T,fs+1,ink,cb,ci)));
+      }else if(b.t==='p'){
+        if(isFootNote(b.text))return;
+        pieces.push(para(S(bg,bodyColor,fs,lh,F+'padding:0 0 12px;'),
+          inlineMd(b.text,T,fs,acc,cb,ci)));
+      }else if(b.t==='quote'){
+        pieces.push(sec(S(qbg,bodyColor,fs,lh,F+'padding:12px 14px;border-left:4px solid '+acc+';border-radius:0 8px 8px 0;'),
+          inlineMd(b.text,T,fs,acc,qbg,acc)));
+        pieces.push(sec(S(bg,bodyColor,1,1,F+'padding:0 0 10px;'),'&nbsp;'));
+      }else if(b.t==='hr'){
+        pieces.push(sec(S(bg,bodyColor,fs,lh,F+'padding:4px 0 12px;'),
+          para(S(bg,bodyColor,1,1,F+'font-size:0;line-height:0;border-top:1px solid '+P.hr+';'),'&nbsp;')));
+      }else if(b.t==='list'){
+        b.items.forEach((it,idx2)=>{
+          const chip=it.match(/^\*\*([^*]{1,12})\*\*\s*[:：]\s*([\s\S]*)$/);
+          let body;
+          if(chip&&opt.chip){
+            // 不用 display:inline-block / 固定宽高 / margin-right，微信会过滤；用 padding + &nbsp; 保证间距
+            body='<span style="background-color:'+chipBg+';color:'+chipInk+';padding:2px 8px;border-radius:6px;font-size:'+(fs-3)+'px;font-weight:700;">'+esc(chip[1])+'</span>&nbsp;&nbsp;'+inlineMd(chip[2],T,fs,acc,cb,ci);
+          }else{
+            const mark=b.ordered?(idx2+1)+'. ':'· ';
+            body='<span style="color:'+acc+';font-weight:700;">'+mark+'</span>&nbsp;'+inlineMd(it,T,fs,acc,cb,ci);
+          }
+          pieces.push(para(S(bg,bodyColor,fs,lh,F+'padding:0 0 10px;'),body));
+        });
+      }
+    });
+
+    // 外层只负责左右留白与块间距，全部用 padding；内层 card 自己带全套显式样式
+    const outerPad=strong?'padding:16px 14px 12px;':'padding:0 14px 14px;';
+    const innerPad=strong?(isCta?'padding:16px 14px 6px;':'padding:0 0 2px;'):'padding:18px 16px 8px;';
+    const deco=strong
+      ?(isCta?'border-left:4px solid '+T.accent+';border-radius:0 10px 10px 0;':'')
+      :'border:1px solid '+P.cardBorder+';border-radius:12px;';
+    const card=sec(S(bg,bodyColor,fs,lh,F+innerPad+deco),pieces.join(''));
+    html.push(sec(S(P.page,P.body,fs,lh,F+outerPad),card));
+  });
+
+  blocks.forEach(b=>{
+    if(b.t==='p'&&isFootNote(b.text)){
+      html.push(sec(S(P.page,P.muted,fs-3.5,1.7,F+'padding:14px 16px 22px;border-top:1px solid '+P.hr+';'),
+        inlineMd(b.text,T,fs-3.5,P.muted,T.lead,P.muted)));
+    }
+  });
+  return sec(ROOT,html.join(''));
+}
+
+// 中性语法演示：只展示 Markdown 写法，不含任何具体文章内容。
+const DEMO = [
+'# 这里写文章标题',
+'',
+'> 栏目名称 ｜ 作者 ｜ 日期',
+'',
+'这里写导语：用一两句话说明这篇文章能帮读者解决什么问题。支持 **加粗** 和 *强调*。',
+'',
+'## 1. 第一个章节',
+'',
+'- **核心亮点**：这一项会变成彩色标签，适合放要点。',
+'- **适用对象**：说明适合哪些读者。',
+'- **落地价值**：说明能带来什么帮助。',
+'- **值得关注**：补充说明或注意事项。',
+'',
+'## 2. 第二个章节',
+'',
+'这里是正文段落，可以写多段。也可以插入：',
+'',
+'> 引用块，用来放提示或金句。',
+'',
+'## 写在最后',
+'',
+'这里是结尾引导语，例如点个「在看」或关注我们。',
+'',
+'---',
+'',
+'*这里是脚注或资料来源说明，会自动变成灰色小字。*'
+].join('\n');
+
+const EMPTY_PREVIEW = '<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
+ + '<body style="margin:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,\'PingFang SC\',\'Microsoft YaHei\',sans-serif;">'
+ + '<div style="padding:78px 30px;text-align:center;color:#94a3b8;">'
+ + '<div style="font-size:15px;font-weight:700;color:#64748b;margin-bottom:10px;">这里会显示排版效果</div>'
+ + '<div style="font-size:13px;line-height:1.9;">在左侧粘贴 Markdown，或点「载入语法演示」<br>先看看各种排版长什么样。</div>'
+ + '</div></body></html>';
+// ==== CORE END ====
+
+const $=id=>document.getElementById(id);
+const DEFAULTS={theme:'indigo',fontSize:'16',lineHeight:'1.85',headStyle:'eyebrow',
+  strong:(SITE_CONFIG.strongCompat!==false),hero:true,num:true,chip:true,cta:true};
+let curTheme=DEFAULTS.theme;
+
+function loadPrefs(){
+  try{
+    const p=JSON.parse(localStorage.getItem('wxfmt_prefs')||'{}');
+    curTheme=p.theme||SITE_CONFIG.defaultTheme||DEFAULTS.theme;
+    $('fontSize').value=p.fontSize||DEFAULTS.fontSize;
+    $('lineHeight').value=p.lineHeight||DEFAULTS.lineHeight;
+    $('headStyle').value=p.headStyle||SITE_CONFIG.defaultHead||DEFAULTS.headStyle;
+    $('strongOn').checked=p.strong===undefined?DEFAULTS.strong:p.strong;
+    $('heroOn').checked=p.hero===undefined?DEFAULTS.hero:p.hero;
+    $('numOn').checked=p.num===undefined?DEFAULTS.num:p.num;
+    $('chipOn').checked=p.chip===undefined?DEFAULTS.chip:p.chip;
+    $('ctaOn').checked=p.cta===undefined?DEFAULTS.cta:p.cta;
+  }catch(e){}
+}
+function savePrefs(){
+  try{localStorage.setItem('wxfmt_prefs',JSON.stringify({theme:curTheme,fontSize:$('fontSize').value,
+    lineHeight:$('lineHeight').value,headStyle:$('headStyle').value,strong:$('strongOn').checked,
+    hero:$('heroOn').checked,num:$('numOn').checked,chip:$('chipOn').checked,cta:$('ctaOn').checked}));}catch(e){}
+}
+function renderThemes(){
+  const box=$('themes');box.innerHTML='';
+  Object.keys(THEMES).forEach(k=>{
+    const t=THEMES[k],d=document.createElement('div');
+    d.className='theme'+(k===curTheme?' on':'');
+    d.innerHTML='<span class="dots"><i style="background:'+t.hero+'"></i><i style="background:'+t.accent+'"></i><i style="background:'+t.chipBg+'"></i></span><span>'+t.name+'</span>';
+    d.onclick=()=>{curTheme=k;renderThemes();refresh();savePrefs();};
+    box.appendChild(d);
+  });
+  if(!THEMES[curTheme]){
+    const d=document.createElement('div');d.className='theme on';
+    const t=fromPrimary(curTheme);
+    d.innerHTML='<span class="dots"><i style="background:'+t.hero+'"></i><i style="background:'+t.accent+'"></i><i style="background:'+t.chipBg+'"></i></span><span>自定义</span>';
+    box.appendChild(d);
+  }
+}
+function opts(){return {fs:$('fontSize').value,lh:$('lineHeight').value,strong:$('strongOn').checked,
+  hero:$('heroOn').checked,num:$('numOn').checked,chip:$('chipOn').checked,cta:$('ctaOn').checked,head:$('headStyle').value};}
+function currentHtml(){return buildHtml($('md').value,curTheme,opts());}
+function refresh(){
+  const has=$('md').value.trim().length>0;
+  const h=has?currentHtml():'';
+  $('code').value=h;
+  $('preview').srcdoc=has
+    ? '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#ffffff;">'+h+'</body></html>'
+    : EMPTY_PREVIEW;
+  $('copyRich').disabled=!has;
+  savePrefs();
+}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),2600);}
+function htmlToText(h){const d=document.createElement('div');d.innerHTML=h;return d.innerText||d.textContent||'';}
+
+async function copyRich(){
+  if(!$('md').value.trim()){toast('请先粘贴 Markdown 内容');return;}
+  const h=currentHtml();
+  try{
+    if(navigator.clipboard&&window.ClipboardItem){
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/html':new Blob([h],{type:'text/html'}),
+        'text/plain':new Blob([htmlToText(h)],{type:'text/plain'})
+      })]);
+      toast('已复制（含样式）→ 到公众号编辑器粘贴');return;
+    }
+  }catch(e){}
+  const ta=document.createElement('div');
+  ta.contentEditable='true';ta.style.cssText='position:fixed;left:-99999px;top:0;';
+  ta.innerHTML=h;document.body.appendChild(ta);
+  const sel=window.getSelection(),r=document.createRange();
+  r.selectNodeContents(ta);sel.removeAllRanges();sel.addRange(r);
+  let ok=false;try{ok=document.execCommand('copy');}catch(e){}
+  sel.removeAllRanges();ta.remove();
+  toast(ok?'已复制（含样式）→ 到公众号编辑器粘贴':'复制失败，请点「下载 HTML」打开后全选复制');
+}
+function download(){
+  if(!$('md').value.trim()){toast('请先粘贴 Markdown 内容');return;}
+  const h='<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>公众号排版</title></head><body style="margin:0;background:#fff;">'+currentHtml()+'</body></html>';
+  const b=new Blob([h],{type:'text/html;charset=utf-8'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download='wechat-article-'+new Date().toISOString().slice(0,10)+'.html';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  toast('HTML 已下载');
+}
+
+['fontSize','lineHeight','headStyle','strongOn','heroOn','numOn','chipOn','ctaOn'].forEach(id=>$(id).addEventListener('change',refresh));
+$('md').addEventListener('input',refresh);
+$('copyRich').onclick=copyRich;
+$('copyMd').onclick=async()=>{
+  if(!$('md').value.trim()){toast('请先粘贴 Markdown 内容');return;}
+  try{await navigator.clipboard.writeText($('md').value);toast('Markdown 已复制');}
+  catch(e){toast('复制失败，请在左侧手动全选复制');}
+};
+$('download').onclick=download;
+$('loadDemo').onclick=()=>{$('md').value=DEMO;refresh();toast('已载入语法演示');};
+$('clear').onclick=()=>{$('md').value='';refresh();};
+$('loadFile').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('md').value=r.result;refresh();toast('已导入 '+f.name);};r.readAsText(f,'utf-8');e.target.value='';};
+$('applyColor').onclick=()=>{curTheme=$('customColor').value;renderThemes();refresh();toast('已应用自定义主色');};
+$('resetBtn').onclick=()=>{
+  curTheme=SITE_CONFIG.defaultTheme||DEFAULTS.theme;
+  $('fontSize').value=DEFAULTS.fontSize;$('lineHeight').value=DEFAULTS.lineHeight;
+  $('headStyle').value=SITE_CONFIG.defaultHead||DEFAULTS.headStyle;
+  $('strongOn').checked=DEFAULTS.strong;
+  $('heroOn').checked=DEFAULTS.hero;$('numOn').checked=DEFAULTS.num;
+  $('chipOn').checked=DEFAULTS.chip;$('ctaOn').checked=DEFAULTS.cta;
+  renderThemes();refresh();toast('已恢复默认设置');
+};
+$('md').addEventListener('dragover',e=>e.preventDefault());
+$('md').addEventListener('drop',e=>{
+  e.preventDefault();const f=e.dataTransfer.files[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>{$('md').value=r.result;refresh();toast('已导入 '+f.name);};r.readAsText(f,'utf-8');
+});
+
+// 初始化：应用站点配置，输入框保持空白（通用模板，不预置任何内容）
+$('siteName').textContent=SITE_CONFIG.name;
+$('siteTagline').textContent=SITE_CONFIG.tagline;
+document.title=SITE_CONFIG.name+' · Markdown 一键转微信图文';
+loadPrefs();
+renderThemes();
+refresh();
+</script>
+</body>
+</html>
